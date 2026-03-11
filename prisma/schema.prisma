@@ -1,0 +1,37 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model SosQuest {
+  id        String      @id @default(uuid())
+  ticketId  String      @unique @map("ticket_id")
+  username  String
+  map       String
+  roomId    String      @map("room_id")
+  issue     String?
+  urgency   String      @default("medium")
+  isBoss    Boolean     @default(false) @map("is_boss")
+  status    String      @default("open")
+  helpers   String?
+  heroes    QuestHero[]
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  @@map("sos_quests")
+}
+
+model QuestHero {
+  id          String   @id @default(uuid())
+  username    String
+  questId     String   @map("quest_id")
+  quest       SosQuest @relation(fields: [questId], references: [id], onDelete: Cascade)
+  committedAt DateTime @default(now()) @map("committed_at")
+
+  @@map("quest_heroes")
+}
