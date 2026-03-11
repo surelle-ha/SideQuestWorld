@@ -1,0 +1,24 @@
+{
+  "name": "sidequestworld",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@nuxtjs/seo": "3.4.0",
+    "nuxt": "^4.3.1",
+    "pg": "^8.20.0",
+    "typeorm": "^0.3.20",
+    "vue": "^3.5.30",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@types/node": "^25.4.0",
+    "@types/pg": "^8.18.0"
+  }
+}
