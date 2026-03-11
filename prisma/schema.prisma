@@ -13,6 +13,7 @@ model SosQuest {
   ticketId  String      @unique @map("ticket_id")
   username  String
   map       String
+  server    String      @default("")
   roomId    String      @map("room_id")
   issue     String?
   urgency   String      @default("medium")

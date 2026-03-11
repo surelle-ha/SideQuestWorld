@@ -8,13 +8,14 @@ export interface QuestDto {
   id: string
   ticketId: string
   username: string
+  server: string
   map: string
   roomId: string
   issue: string | null
   urgency: 'low' | 'medium' | 'high'
   isBoss: boolean
   status: 'open' | 'resolved'
-  helpers: string[]       // array parsed from stored comma string
+  helpers: string[]
   heroes: HeroDto[]
   createdAt: string
   updatedAt: string
@@ -22,6 +23,7 @@ export interface QuestDto {
 
 export interface CreateQuestBody {
   username: string
+  server: string
   map: string
   roomId: string
   issue?: string
@@ -30,7 +32,7 @@ export interface CreateQuestBody {
 }
 
 export interface CompleteQuestBody {
-  helpers: string[]       // usernames of players who helped
+  helpers: string[]
 }
 
 export interface CommitHeroBody {

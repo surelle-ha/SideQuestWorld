@@ -85,7 +85,7 @@
                 <span class="ticket-chip">{{ activeQuest.ticketId }}</span>
               </div>
               <h3 class="aq-name">{{ activeQuest.username }}</h3>
-              <p class="aq-location">📍 {{ activeQuest.map }} · Room {{ activeQuest.roomId }}</p>
+              <p class="aq-location">🌐 {{ activeQuest.server }} · 📍 {{ activeQuest.map }} · Room {{ activeQuest.roomId }}</p>
               <p v-if="activeQuest.issue" class="aq-issue">"{{ activeQuest.issue }}"</p>
 
               <div v-if="activeQuest.heroes?.length" class="heroes-row">
@@ -118,6 +118,27 @@
                     placeholder="Enter your in-game name"
                     @focus="focus.username = true" @blur="focus.username = false" required />
                   <span v-if="form.username" class="check-mark">✓</span>
+                </div>
+              </div>
+
+              <div class="field-group">
+                <label class="field-label"><span class="label-icon">🌐</span> Server</label>
+                <div class="input-wrap select-wrap">
+                  <select v-model="form.server" class="field-input field-select" required>
+                    <option value="" disabled>Select a server...</option>
+                    <option value="Twilly">Twilly</option>
+                    <option value="Artix">Artix</option>
+                    <option value="Gravelyn">Gravelyn</option>
+                    <option value="Sir Ver">Sir Ver</option>
+                    <option value="Alteon">Alteon</option>
+                    <option value="Yokai (SEA)">Yokai (SEA)</option>
+                    <option value="Twig">Twig</option>
+                    <option value="Sepulchure">Sepulchure</option>
+                    <option value="Safiria">Safiria</option>
+                    <option value="Swordhaven (EU)">Swordhaven (EU)</option>
+                    <option value="Yorumi">Yorumi</option>
+                    <option value="Espada">Espada</option>
+                  </select>
                 </div>
               </div>
 
@@ -193,10 +214,25 @@
 
         <!-- ══ QUEST BOARD TAB ══ -->
         <main v-else key="board" class="board-panel">
-          <div class="card-header">
-            <div class="sos-tag board-tag">📋 LIVE QUEST BOARD</div>
-            <h2 class="card-title">Active SOS Requests</h2>
-            <p class="card-desc">Browse open distress calls. Enter your name and click <strong>Commit</strong> to help.</p>
+          <div class="card-header board-card-header">
+            <div class="board-header-left">
+              <div class="sos-tag board-tag">📋 LIVE QUEST BOARD</div>
+              <h2 class="card-title">Active SOS Requests</h2>
+              <p class="card-desc">Browse open distress calls. Enter your name and click <strong>Commit</strong> to help.</p>
+            </div>
+            <div class="refresh-controls">
+              <span v-if="lastRefreshed" class="last-refreshed">{{ lastRefreshedText }}</span>
+              <button class="refresh-btn" :class="{ spinning: boardLoading }" @click="loadQuests" title="Refresh now">
+                <span class="refresh-icon">↻</span>
+              </button>
+              <select v-model="refreshInterval" class="refresh-select" @change="resetAutoRefresh">
+                <option :value="0">Manual</option>
+                <option :value="5">Every 5s</option>
+                <option :value="10">Every 10s</option>
+                <option :value="20">Every 20s</option>
+                <option :value="60">Every 60s</option>
+              </select>
+            </div>
           </div>
 
           <div class="filter-bar">
@@ -236,7 +272,8 @@
                   <span class="qc-avatar">{{ quest.username.charAt(0).toUpperCase() }}</span>
                   <div>
                     <a :href="`https://account.aq.com/CharPage?id=${quest.username}`" target="_blank" rel="noopener noreferrer" class="qc-name qc-name-link">{{ quest.username }}</a>
-                    <div class="qc-loc">
+                    <div class="qc-loc" style="flex-direction:column; align-items:flex-start; gap:2px;">
+                      <span>🌐 {{ quest.server }}</span>
                       📍 {{ quest.map }} · Room {{ quest.roomId }}
                       <button class="copy-join-btn" @click.stop="copyJoin(quest)" :title="`Copy /join command`">
                         <span v-if="copiedId === quest.id">✓</span>
@@ -260,14 +297,19 @@
               </div>
 
               <div v-if="quest.status === 'open'" class="qc-footer">
-                <div v-if="commitingId !== quest.id" class="commit-area">
-                  <input v-model="commitNames[quest.id]" type="text" class="field-input commit-input"
-                    :placeholder="savedUsername || 'Your username to commit...'" @click.stop />
-                  <button class="commit-btn" @click="commitToQuest(quest)">⚔️ Commit</button>
+                <div v-if="savedUsername && quest.username.toLowerCase() === savedUsername.toLowerCase()" class="own-quest-notice">
+                  🛡️ This is your quest
                 </div>
-                <div v-else class="committing-msg">
-                  <span class="spinner small"></span> Joining quest...
-                </div>
+                <template v-else>
+                  <div v-if="commitingId !== quest.id" class="commit-area">
+                    <input v-model="commitNames[quest.id]" type="text" class="field-input commit-input"
+                      :placeholder="savedUsername || 'Your username to commit...'" @click.stop />
+                    <button class="commit-btn" @click="commitToQuest(quest)">⚔️ Commit</button>
+                  </div>
+                  <div v-else class="committing-msg">
+                    <span class="spinner small"></span> Joining quest...
+                  </div>
+                </template>
               </div>
             </div>
           </TransitionGroup>
@@ -359,7 +401,11 @@ function handleBeforeUnload(e: BeforeUnloadEvent) {
 }
 
 onMounted(() => window.addEventListener('beforeunload', handleBeforeUnload))
-onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnload))
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+  if (refreshTimer)  clearInterval(refreshTimer)
+  if (relativeTimer) clearInterval(relativeTimer)
+})
 
 // ── Tabs ────────────────────────────────────────────────
 const activeTab = ref<'sos' | 'board'>('sos')
@@ -367,6 +413,7 @@ const activeTab = ref<'sos' | 'board'>('sos')
 // ── Form ────────────────────────────────────────────────
 const form = reactive({
   username: '',
+  server: '',
   mapPreset: 'other',
   customMap: '',
   roomId: '',
@@ -400,6 +447,7 @@ async function submitSOS() {
       method: 'POST',
       body: {
         username: form.username,
+        server:   form.server,
         map:      resolvedMap(),
         roomId:   form.roomId,
         issue:    form.issue || undefined,
@@ -419,7 +467,7 @@ function resetAll() {
   activeQuest.value = null
   Object.assign(form, {
     username: savedUsername.value,
-    mapPreset: 'other', customMap: '', roomId: '', issue: '', urgency: 'medium', isBoss: false,
+    server: '', mapPreset: 'other', customMap: '', roomId: '', issue: '', urgency: 'medium', isBoss: false,
   })
 }
 
@@ -472,6 +520,27 @@ const openCount = computed(() =>
   quests.value.filter(q => q.status === 'open').length || boardTotal.value
 )
 
+const refreshInterval  = ref(20)
+const lastRefreshed    = ref<Date | null>(null)
+const lastRefreshedText = ref('')
+let   refreshTimer: ReturnType<typeof setInterval> | null = null
+let   relativeTimer: ReturnType<typeof setInterval> | null = null
+
+function updateRelativeTime() {
+  if (!lastRefreshed.value) return
+  const diff = Math.floor((Date.now() - lastRefreshed.value.getTime()) / 1000)
+  if (diff < 5)   lastRefreshedText.value = 'just now'
+  else if (diff < 60) lastRefreshedText.value = `${diff}s ago`
+  else lastRefreshedText.value = `${Math.floor(diff / 60)}m ago`
+}
+
+function resetAutoRefresh() {
+  if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null }
+  if (refreshInterval.value > 0) {
+    refreshTimer = setInterval(loadQuests, refreshInterval.value * 1000)
+  }
+}
+
 const boardFilters = [
   { value: 'open',     label: '🔴 Open' },
   { value: 'all',      label: '📜 All' },
@@ -496,6 +565,11 @@ async function loadQuests() {
     quests.value = []
   } finally {
     boardLoading.value = false
+    lastRefreshed.value = new Date()
+    updateRelativeTime()
+    if (!relativeTimer) {
+      relativeTimer = setInterval(updateRelativeTime, 5000)
+    }
   }
 }
 
@@ -507,6 +581,7 @@ async function applyFilter(val: string) {
 async function switchToBoard() {
   activeTab.value = 'board'
   await loadQuests()
+  resetAutoRefresh()
 }
 
 // ── Time ago helper ─────────────────────────────────────
@@ -591,6 +666,8 @@ async function commitToQuest(quest: QuestDto) {
 .sos-card, .board-panel { background: rgba(255,255,255,.03); border: 1px solid rgba(196,181,253,.12); border-radius: 20px; padding: 32px; backdrop-filter: blur(16px); box-shadow: 0 32px 80px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.06); }
 @media (max-width: 520px) { .sos-card, .board-panel { padding: 20px 16px; } }
 .card-header { margin-bottom: 28px; }
+.board-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.board-header-left { flex: 1; min-width: 0; }
 .sos-tag { display: inline-block; background: linear-gradient(135deg,rgba(220,38,38,.25),rgba(251,113,133,.15)); border: 1px solid rgba(252,165,165,.3); color: #fca5a5; font-size: .68rem; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; padding: 4px 12px; border-radius: 20px; margin-bottom: 10px; }
 .sos-tag.board-tag { background: linear-gradient(135deg,rgba(234,179,8,.2),rgba(251,191,36,.1)); border-color: rgba(251,191,36,.3); color: #fbbf24; }
 .sos-tag.mini { font-size: .62rem; padding: 2px 9px; margin: 0; }
@@ -659,7 +736,7 @@ async function commitToQuest(quest: QuestDto) {
 .helpers-text strong { color: #c4b5fd; }
 .reset-btn { background: transparent; border: 1px solid rgba(196,181,253,.3); border-radius: 8px; padding: 8px 22px; color: #c4b5fd; font-family: 'Nunito', sans-serif; font-size: .85rem; font-weight: 700; cursor: pointer; transition: all .2s; align-self: flex-start; }
 .reset-btn:hover { background: rgba(196,181,253,.08); }
-.filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+.filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; }
 .filter-pill { background: rgba(255,255,255,.04); border: 1px solid rgba(196,181,253,.12); border-radius: 20px; padding: 6px 16px; font-family: 'Nunito', sans-serif; font-size: .78rem; font-weight: 700; color: #6b5fa0; cursor: pointer; transition: all .2s; }
 .filter-pill:hover { border-color: rgba(196,181,253,.3); color: #c4b5fd; }
 .filter-pill.active { background: rgba(124,58,237,.2); border-color: rgba(196,181,253,.4); color: #c4b5fd; }
@@ -696,6 +773,14 @@ async function commitToQuest(quest: QuestDto) {
 .qc-helpers { font-size: .78rem; color: #9ca3af; margin-bottom: 10px; }
 .copy-join-btn { background: rgba(196,181,253,.1); border: 1px solid rgba(196,181,253,.2); border-radius: 6px; padding: 1px 6px; font-size: .72rem; color: #c4b5fd; cursor: pointer; transition: all .15s; line-height: 1.4; }
 .copy-join-btn:hover { background: rgba(196,181,253,.2); }
+.refresh-controls { display: flex; align-items: center; gap: 6px; flex-shrink: 0; padding-top: 4px; }
+.refresh-select { background: rgba(255,255,255,.05); border: 1px solid rgba(196,181,253,.15); border-radius: 8px; padding: 5px 10px; font-family: 'Nunito', sans-serif; font-size: .75rem; font-weight: 700; color: #c4b5fd; cursor: pointer; outline: none; }
+.refresh-select option { background: #1a1530; color: #e8e4f0; }
+.refresh-btn { background: rgba(196,181,253,.1); border: 1px solid rgba(196,181,253,.2); border-radius: 8px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all .2s; color: #c4b5fd; }
+.refresh-btn:hover { background: rgba(196,181,253,.2); }
+.refresh-icon { font-size: 1.1rem; font-weight: 700; display: inline-block; transition: transform .4s; }
+.refresh-btn.spinning .refresh-icon { animation: spin .7s linear infinite; }
+.last-refreshed { font-size: .68rem; color: #4b4569; white-space: nowrap; }
 .qc-helpers strong { color: #c4b5fd; }
 .qc-footer { border-top: 1px solid rgba(196,181,253,.08); padding-top: 12px; }
 .commit-area { display: flex; gap: 8px; }
@@ -703,6 +788,7 @@ async function commitToQuest(quest: QuestDto) {
 .commit-btn { background: linear-gradient(135deg,rgba(124,58,237,.3),rgba(168,85,247,.2)); border: 1px solid rgba(196,181,253,.3); border-radius: 10px; padding: 9px 16px; font-family: 'Nunito', sans-serif; font-size: .82rem; font-weight: 700; color: #c4b5fd; cursor: pointer; transition: all .2s; white-space: nowrap; }
 .commit-btn:hover { background: linear-gradient(135deg,rgba(124,58,237,.45),rgba(168,85,247,.3)); }
 .committing-msg { display: flex; align-items: center; gap: 8px; font-size: .82rem; color: #7c6fa0; padding: 8px 0; }
+.own-quest-notice { font-size: .78rem; color: #7c6fa0; padding: 8px 0; font-style: italic; }
 .boss-badge { background: rgba(220,38,38,.15); border: 1px solid rgba(252,165,165,.25); color: #fca5a5; border-radius: 20px; padding: 3px 10px; font-size: .72rem; font-weight: 700; }
 .boss-badge.small { font-size: .62rem; padding: 2px 8px; }
 .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.75); backdrop-filter: blur(6px); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; }

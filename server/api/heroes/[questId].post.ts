@@ -27,6 +27,10 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 409, message: 'Cannot commit to a resolved quest' })
   }
 
+  if (quest.username.toLowerCase() === username.toLowerCase()) {
+    throw createError({ statusCode: 403, message: 'You cannot commit to your own quest' })
+  }
+
   const alreadyCommitted = quest.heroes?.some(
     (h: QuestHero) => h.username.toLowerCase() === username.toLowerCase()
   )

@@ -7,6 +7,7 @@ export default defineEventHandler(async (event) => {
   const body = await readBody<CreateQuestBody>(event)
 
   const username = requireField(body?.username, 'username')
+  const server   = requireField(body?.server,   'server')
   const map      = requireField(body?.map,      'map')
   const roomId   = requireField(body?.roomId,   'roomId')
 
@@ -14,7 +15,7 @@ export default defineEventHandler(async (event) => {
     ? body.urgency!
     : 'medium'
 
-  // ── Limit: 1 open SOS per username ──────────────────────
+  // Limit: 1 open SOS per username
   const existing = await prisma.sosQuest.findFirst({
     where: { username, status: 'open' },
   })
@@ -30,6 +31,7 @@ export default defineEventHandler(async (event) => {
     data: {
       ticketId: generateTicketId(),
       username,
+      server,
       map,
       roomId,
       issue:   body?.issue?.trim() || null,
