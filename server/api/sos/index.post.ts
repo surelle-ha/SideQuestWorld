@@ -1,7 +1,4 @@
 // server/api/sos/index.post.ts
-/**
- * POST /api/sos
- */
 import prisma from '~~/server/db/prisma'
 import type { CreateQuestBody } from '~~/types/quest'
 import { generateTicketId, requireField, serializeQuest } from '~~/server/utils/quest.utils'
@@ -17,17 +14,29 @@ export default defineEventHandler(async (event) => {
     ? body.urgency!
     : 'medium'
 
+  // ── Limit: 1 open SOS per username ──────────────────────
+  const existing = await prisma.sosQuest.findFirst({
+    where: { username, status: 'open' },
+  })
+
+  if (existing) {
+    throw createError({
+      statusCode: 409,
+      message: 'You already have an open SOS quest. Please resolve it before sending a new one.',
+    })
+  }
+
   const quest = await prisma.sosQuest.create({
     data: {
       ticketId: generateTicketId(),
       username,
       map,
       roomId,
-      issue:    body?.issue?.trim() || null,
+      issue:   body?.issue?.trim() || null,
       urgency,
-      isBoss:   Boolean(body?.isBoss),
-      status:   'open',
-      helpers:  null,
+      isBoss:  Boolean(body?.isBoss),
+      status:  'open',
+      helpers: null,
     },
     include: { heroes: true },
   })

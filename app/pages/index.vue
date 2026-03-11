@@ -8,6 +8,31 @@
     </div>
 
     <div class="content">
+
+      <!-- ══ USERNAME PROMPT MODAL ══ -->
+      <Transition name="modal-fade">
+        <div v-if="showUsernamePrompt" class="modal-backdrop">
+          <div class="modal username-modal">
+            <div class="modal-icon">🧙</div>
+            <h3 class="modal-title">Who are you, adventurer?</h3>
+            <p class="modal-desc">Enter your in-game username to get started. This will be saved for future visits.</p>
+            <input
+              v-model="usernameInput"
+              type="text"
+              class="field-input"
+              placeholder="Your in-game name..."
+              @keydown.enter="saveUsername"
+              autofocus
+            />
+            <div class="modal-actions">
+              <button class="modal-confirm" :disabled="!usernameInput.trim()" @click="saveUsername">
+                ⚔️ Enter the Realm
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+
       <header class="site-header">
         <div class="logo-area">
           <span class="logo-icon">⚔️</span>
@@ -17,6 +42,9 @@
           </div>
         </div>
         <div class="header-right">
+          <div v-if="savedUsername" class="player-chip" @click="showUsernamePrompt = true" title="Click to change username">
+            🧙 {{ savedUsername }}
+          </div>
           <div class="status-badge">
             <span class="pulse-dot"></span>
             Support Online
@@ -45,6 +73,9 @@
           <!-- Active quest panel -->
           <Transition name="slide-down">
             <div v-if="activeQuest" class="active-quest-panel">
+              <div class="tab-close-warning">
+                ⚠️ <strong>Keep this tab open!</strong> Closing it will remove your quest from the board.
+              </div>
               <div class="aq-title-row">
                 <span class="sos-tag mini" :class="activeQuest.urgency">
                   {{ urgencyLevels.find(u => u.value === activeQuest.urgency)?.emoji }}
@@ -95,54 +126,30 @@
                 <div class="input-wrap select-wrap">
                   <select v-model="form.mapPreset" class="field-input field-select"
                     @focus="focus.map = true" @blur="focus.map = false">
-                    <option value="">Select a known map (optional)</option>
-                    <optgroup label="⚔️ Battle Zones">
-                      <option>Battleon Town</option><option>Dage's Underworld</option>
-                      <option>Brightfall</option><option>Mythsong Canyon</option><option>Bludrut Keep</option>
-                    </optgroup>
-                    <optgroup label="🏰 Dungeons">
-                      <option>Death Pit Dungeon</option><option>Swordhaven Dungeon</option>
-                      <option>Shadowfall Dungeon</option><option>Chaos Dungeon</option>
-                    </optgroup>
-                    <optgroup label="🌿 Wilderness">
-                      <option>Greenguard Forest</option><option>Oaklore Keep</option>
-                      <option>Wastelands</option><option>Lolosia Docks</option>
-                    </optgroup>
-                    <optgroup label="🌑 Boss Zones">
-                      <option>Drakath's Realm</option><option>Chaos Lord Arena</option>
-                      <option>Nulgath's Realm</option><option>Lich's Tower</option>
-                    </optgroup>
+                    
+                    <option value="other">Other (type below)</option>
+                    <option value="Dungeon of Shadows">Dungeon of Shadows</option>
+                    <option value="Crystal Caverns">Crystal Caverns</option>
+                    <option value="Ember Wastes">Ember Wastes</option>
+                    <option value="Frostpeak Summit">Frostpeak Summit</option>
+                    <option value="Verdant Wilds">Verdant Wilds</option>
+                    <option value="Skyreach Tower">Skyreach Tower</option>
+                    <option value="Abyssal Depths">Abyssal Depths</option>
                   </select>
-                  <span class="select-arrow">▼</span>
                 </div>
-                <div class="input-wrap" style="margin-top:8px;">
+                <div v-if="form.mapPreset === 'other'" class="input-wrap" style="margin-top:8px">
                   <input v-model="form.customMap" type="text" class="field-input"
-                    :placeholder="form.mapPreset ? 'Or type a custom map (overrides above)' : 'Custom map name e.g. /join darkfortress'"
-                    @focus="focus.map = true" @blur="focus.map = false" />
-                  <span class="field-hint">💡 Leave blank to use the selected map above</span>
-                </div>
-              </div>
-
-              <div class="boss-toggle-row" :class="{ active: form.isBoss }" @click="form.isBoss = !form.isBoss">
-                <div class="boss-toggle-left">
-                  <span class="boss-icon">💀</span>
-                  <div>
-                    <div class="boss-toggle-title">Boss Fight</div>
-                    <div class="boss-toggle-sub">Toggle if you're fighting a boss enemy</div>
-                  </div>
-                </div>
-                <div class="toggle-track" :class="{ on: form.isBoss }">
-                  <div class="toggle-thumb"></div>
+                    placeholder="Type your map name..." />
                 </div>
               </div>
 
               <div class="field-group" :class="{ focused: focus.roomId, filled: form.roomId }">
-                <label class="field-label"><span class="label-icon">🚪</span> Room ID</label>
+                <label class="field-label"><span class="label-icon">🚪</span> Room / Instance ID</label>
                 <div class="input-wrap">
                   <input v-model="form.roomId" type="text" class="field-input"
-                    placeholder="e.g. battleon-1, dungeon-42"
+                    placeholder="e.g. 9090"
                     @focus="focus.roomId = true" @blur="focus.roomId = false" required />
-                  <span class="field-hint">Check the top-right corner of your screen</span>
+                  <span class="field-hint">Check the bottom-right corner of your screen</span>
                 </div>
               </div>
 
@@ -164,6 +171,13 @@
                     @click="form.urgency = level.value">
                     {{ level.emoji }} {{ level.label }}
                   </button>
+                </div>
+              </div>
+
+              <div class="boss-toggle" @click="form.isBoss = !form.isBoss">
+                <div class="boss-toggle-inner" :class="{ active: form.isBoss }">
+                  <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                  <span class="toggle-label">💀 Boss Fight — need strong heroes</span>
                 </div>
               </div>
 
@@ -214,14 +228,21 @@
                   <span v-if="quest.status === 'resolved'" class="resolved-badge small">✅ Done</span>
                 </div>
                 <span class="qc-ticket">{{ quest.ticketId }}</span>
+                <span class="qc-time" :title="new Date(quest.createdAt).toLocaleString()">🕐 {{ timeAgo(quest.createdAt) }}</span>
               </div>
 
               <div class="qc-body">
                 <div class="qc-player">
                   <span class="qc-avatar">{{ quest.username.charAt(0).toUpperCase() }}</span>
                   <div>
-                    <div class="qc-name">{{ quest.username }}</div>
-                    <div class="qc-loc">📍 {{ quest.map }} · Room {{ quest.roomId }}</div>
+                    <a :href="`https://account.aq.com/CharPage?id=${quest.username}`" target="_blank" rel="noopener noreferrer" class="qc-name qc-name-link">{{ quest.username }}</a>
+                    <div class="qc-loc">
+                      📍 {{ quest.map }} · Room {{ quest.roomId }}
+                      <button class="copy-join-btn" @click.stop="copyJoin(quest)" :title="`Copy /join command`">
+                        <span v-if="copiedId === quest.id">✓</span>
+                        <span v-else>📋</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <p v-if="quest.issue" class="qc-issue">"{{ quest.issue }}"</p>
@@ -241,7 +262,7 @@
               <div v-if="quest.status === 'open'" class="qc-footer">
                 <div v-if="commitingId !== quest.id" class="commit-area">
                   <input v-model="commitNames[quest.id]" type="text" class="field-input commit-input"
-                    placeholder="Your username to commit..." @click.stop />
+                    :placeholder="savedUsername || 'Your username to commit...'" @click.stop />
                   <button class="commit-btn" @click="commitToQuest(quest)">⚔️ Commit</button>
                 </div>
                 <div v-else class="committing-msg">
@@ -259,7 +280,7 @@
           <div class="modal">
             <div class="modal-icon">🏆</div>
             <h3 class="modal-title">Quest Complete!</h3>
-            <p class="modal-desc">Who came to your aid? Tag the heroes who helped you win.</p>
+            <p class="modal-desc">Tag the heroes who helped you win.</p>
             <div class="helper-input-row">
               <input v-model="helperInput" type="text" class="field-input"
                 placeholder="Hero's username..." @keydown.enter.prevent="addHelper" />
@@ -294,8 +315,51 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import type { QuestDto } from '~~/types/quest'
+
+// ── Username persistence ─────────────────────────────────
+const savedUsername      = ref('')
+const usernameInput      = ref('')
+const showUsernamePrompt = ref(false)
+
+onMounted(async () => {
+  const stored = localStorage.getItem('sqw_username')
+  if (stored) {
+    savedUsername.value = stored
+    form.username = stored
+    // Restore any open quest this user owns
+    try {
+      const res = await $fetch<{ quests: QuestDto[] }>('/api/quests', {
+        params: { status: 'open' },
+      })
+      const owned = res.quests.find(q => q.username.toLowerCase() === stored.toLowerCase())
+      if (owned) activeQuest.value = owned
+    } catch {}
+  } else {
+    showUsernamePrompt.value = true
+  }
+})
+
+function saveUsername() {
+  const name = usernameInput.value.trim()
+  if (!name) return
+  savedUsername.value = name
+  form.username = name
+  localStorage.setItem('sqw_username', name)
+  showUsernamePrompt.value = false
+}
+
+// ── Tab-close warning ────────────────────────────────────
+function handleBeforeUnload(e: BeforeUnloadEvent) {
+  if (activeQuest.value && activeQuest.value.status === 'open') {
+    e.preventDefault()
+    e.returnValue = ''
+  }
+}
+
+onMounted(() => window.addEventListener('beforeunload', handleBeforeUnload))
+onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnload))
 
 // ── Tabs ────────────────────────────────────────────────
 const activeTab = ref<'sos' | 'board'>('sos')
@@ -303,7 +367,7 @@ const activeTab = ref<'sos' | 'board'>('sos')
 // ── Form ────────────────────────────────────────────────
 const form = reactive({
   username: '',
-  mapPreset: '',
+  mapPreset: 'other',
   customMap: '',
   roomId: '',
   issue: '',
@@ -312,8 +376,8 @@ const form = reactive({
 })
 
 const focus = reactive({ username: false, map: false, roomId: false, issue: false })
-const isLoading  = ref(false)
-const formError  = ref('')
+const isLoading   = ref(false)
+const formError   = ref('')
 const activeQuest = ref<QuestDto | null>(null)
 
 const urgencyLevels = [
@@ -324,8 +388,8 @@ const urgencyLevels = [
 
 function resolvedMap() {
   if (form.customMap.trim()) return form.customMap.trim()
-  if (form.mapPreset) return form.mapPreset
-  return 'Unknown Map'
+  if (form.mapPreset && form.mapPreset !== 'other') return form.mapPreset
+  return form.customMap.trim() || 'Unknown Map'
 }
 
 async function submitSOS() {
@@ -353,19 +417,22 @@ async function submitSOS() {
 
 function resetAll() {
   activeQuest.value = null
-  Object.assign(form, { username: '', mapPreset: '', customMap: '', roomId: '', issue: '', urgency: 'medium', isBoss: false })
+  Object.assign(form, {
+    username: savedUsername.value,
+    mapPreset: 'other', customMap: '', roomId: '', issue: '', urgency: 'medium', isBoss: false,
+  })
 }
 
 // ── Complete modal ───────────────────────────────────────
 const showCompleteModal = ref(false)
-const helperInput   = ref('')
-const helperNames   = ref<string[]>([])
+const helperInput     = ref('')
+const helperNames     = ref<string[]>([])
 const completeLoading = ref(false)
 const completeError   = ref('')
 
 function openCompleteModal() {
-  helperNames.value = activeQuest.value?.heroes?.map(h => h.username) ?? []
-  helperInput.value = ''
+  helperNames.value   = activeQuest.value?.heroes?.map(h => h.username) ?? []
+  helperInput.value   = ''
   completeError.value = ''
   showCompleteModal.value = true
 }
@@ -378,7 +445,7 @@ function addHelper() {
 
 async function confirmComplete() {
   if (!activeQuest.value) return
-  completeError.value = ''
+  completeError.value   = ''
   completeLoading.value = true
   try {
     const updated = await $fetch<QuestDto>(`/api/quests/${activeQuest.value.id}/complete`, {
@@ -387,7 +454,6 @@ async function confirmComplete() {
     })
     activeQuest.value = updated
     showCompleteModal.value = false
-    // Refresh board if visible
     if (activeTab.value === 'board') await loadQuests()
   } catch (e: any) {
     completeError.value = e?.data?.message || 'Failed to complete quest.'
@@ -397,8 +463,8 @@ async function confirmComplete() {
 }
 
 // ── Quest Board ─────────────────────────────────────────
-const quests      = ref<QuestDto[]>([])
-const boardTotal  = ref(0)
+const quests       = ref<QuestDto[]>([])
+const boardTotal   = ref(0)
 const boardLoading = ref(false)
 const boardFilter  = ref('open')
 
@@ -443,12 +509,38 @@ async function switchToBoard() {
   await loadQuests()
 }
 
+// ── Time ago helper ─────────────────────────────────────
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins  = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days  = Math.floor(diff / 86400000)
+  if (mins < 1)   return 'just now'
+  if (mins < 60)  return `${mins}m ago`
+  if (hours < 24) return `${hours}h ago`
+  return `${days}d ago`
+}
+
+// ── Copy join command ───────────────────────────────────
+const copiedId = ref<string | null>(null)
+
+async function copyJoin(quest: QuestDto) {
+  const text = `/join ${quest.map}-${quest.roomId}`
+  try {
+    await navigator.clipboard.writeText(text)
+    copiedId.value = quest.id
+    setTimeout(() => { copiedId.value = null }, 2000)
+  } catch {
+    alert(text)
+  }
+}
+
 // ── Commit hero ──────────────────────────────────────────
-const commitNames  = reactive<Record<string, string>>({})
-const commitingId  = ref<string | null>(null)
+const commitNames = reactive<Record<string, string>>({})
+const commitingId = ref<string | null>(null)
 
 async function commitToQuest(quest: QuestDto) {
-  const name = (commitNames[quest.id] || '').trim()
+  const name = (commitNames[quest.id] || savedUsername.value || '').trim()
   if (!name) return
   commitingId.value = quest.id
   try {
@@ -487,6 +579,8 @@ async function commitToQuest(quest: QuestDto) {
 .logo-title { font-family: 'Cinzel', serif; font-size: 1.3rem; font-weight: 900; background: linear-gradient(135deg,#c4b5fd,#f0abfc,#93c5fd); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1.1; }
 .logo-sub { font-size: .68rem; color: #7c6fa0; letter-spacing: .12em; text-transform: uppercase; }
 .header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.player-chip { background: rgba(196,181,253,.1); border: 1px solid rgba(196,181,253,.25); border-radius: 20px; padding: 4px 14px; font-size: .78rem; font-weight: 700; color: #c4b5fd; cursor: pointer; transition: all .2s; }
+.player-chip:hover { background: rgba(196,181,253,.18); }
 .status-badge { display: flex; align-items: center; gap: 7px; background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.3); border-radius: 20px; padding: 5px 14px; font-size: .75rem; font-weight: 600; color: #34d399; white-space: nowrap; }
 .pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: #34d399; animation: pulse-green 2s ease-in-out infinite; flex-shrink: 0; }
 @keyframes pulse-green { 0%,100% { box-shadow: 0 0 0 0 rgba(52,211,153,.5); } 50% { box-shadow: 0 0 0 5px rgba(52,211,153,0); } }
@@ -505,48 +599,38 @@ async function commitToQuest(quest: QuestDto) {
 .sos-tag.high   { background: rgba(220,38,38,.2); border-color: rgba(252,165,165,.3); color: #fca5a5; }
 .card-title { font-family: 'Cinzel', serif; font-size: 1.8rem; font-weight: 900; background: linear-gradient(135deg,#e2d9f3,#c4b5fd 50%,#f0abfc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin: 0 0 8px; }
 .card-desc { color: #8b80a8; font-size: .9rem; line-height: 1.6; }
-.card-desc strong { color: #c4b5fd; }
+.tab-close-warning { background: rgba(234,179,8,.1); border: 1px solid rgba(234,179,8,.3); border-radius: 10px; padding: 10px 14px; font-size: .8rem; color: #fbbf24; margin-bottom: 16px; line-height: 1.5; }
 .sos-form { display: flex; flex-direction: column; gap: 20px; }
-.field-group { display: flex; flex-direction: column; gap: 7px; }
-.field-label { display: flex; align-items: center; gap: 6px; font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #a89bc4; transition: color .2s; }
-.field-group.focused .field-label { color: #c4b5fd; }
-.label-icon { font-size: .95rem; }
+.field-group { display: flex; flex-direction: column; gap: 8px; }
+.field-label { font-size: .8rem; font-weight: 700; color: #8b80a8; text-transform: uppercase; letter-spacing: .08em; display: flex; align-items: center; gap: 6px; }
+.label-icon { font-size: 1rem; }
 .input-wrap { position: relative; }
-.field-input { width: 100%; background: rgba(255,255,255,.04); border: 1px solid rgba(196,181,253,.15); border-radius: 10px; padding: 11px 16px; color: #e8e4f0; font-family: 'Nunito', sans-serif; font-size: .93rem; transition: border-color .2s, background .2s, box-shadow .2s; outline: none; -webkit-appearance: none; }
-.field-input::placeholder { color: #4b4569; }
-.field-input:focus { border-color: rgba(196,181,253,.5); background: rgba(196,181,253,.06); box-shadow: 0 0 0 3px rgba(124,58,237,.15); }
-.field-textarea { resize: vertical; min-height: 80px; max-height: 200px; line-height: 1.5; }
-.select-wrap .field-input { padding-right: 36px; cursor: pointer; }
-.select-wrap select option { background: #1a1628; color: #e8e4f0; }
-.select-wrap select optgroup { color: #a89bc4; }
-.select-arrow { position: absolute; right: 13px; top: 50%; transform: translateY(-50%); color: #7c6fa0; font-size: .6rem; pointer-events: none; }
-.check-mark { position: absolute; right: 13px; top: 50%; transform: translateY(-50%); color: #34d399; font-weight: 700; }
-.field-hint { display: block; font-size: .72rem; color: #5c5278; margin-top: 5px; font-style: italic; }
+.field-input { width: 100%; background: rgba(255,255,255,.05); border: 1px solid rgba(196,181,253,.15); border-radius: 10px; padding: 12px 16px; font-family: 'Nunito', sans-serif; font-size: .92rem; color: #e8e4f0; outline: none; transition: all .2s; }
+.field-input:focus { border-color: rgba(196,181,253,.4); background: rgba(255,255,255,.07); box-shadow: 0 0 0 3px rgba(124,58,237,.12); }
+.field-select { appearance: none; cursor: pointer; background: rgba(255,255,255,.05); color: #e8e4f0; }
+.select-wrap::after { content: '▾'; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: #7c6fa0; pointer-events: none; }
+.field-select option { background: #1a1530; color: #e8e4f0; }
+.field-textarea { resize: vertical; min-height: 80px; }
+.check-mark { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: #34d399; font-weight: 700; }
+.field-hint { font-size: .72rem; color: #5c5278; margin-top: 4px; display: block; }
 .char-count { position: absolute; bottom: 8px; right: 12px; font-size: .68rem; color: #5c5278; }
-.boss-toggle-row { display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,.03); border: 1px solid rgba(196,181,253,.12); border-radius: 12px; padding: 14px 16px; cursor: pointer; transition: all .2s; user-select: none; gap: 12px; }
-.boss-toggle-row:hover { border-color: rgba(196,181,253,.3); }
-.boss-toggle-row.active { border-color: rgba(248,113,113,.4); background: rgba(220,38,38,.08); }
-.boss-toggle-left { display: flex; align-items: center; gap: 12px; }
-.boss-icon { font-size: 1.4rem; }
-.boss-toggle-title { font-size: .88rem; font-weight: 700; color: #e8e4f0; }
-.boss-toggle-sub { font-size: .72rem; color: #6b5fa0; margin-top: 1px; }
-.toggle-track { width: 42px; height: 24px; border-radius: 12px; background: rgba(255,255,255,.08); border: 1px solid rgba(196,181,253,.15); position: relative; transition: all .25s; flex-shrink: 0; }
-.toggle-track.on { background: rgba(220,38,38,.55); border-color: rgba(248,113,113,.5); }
-.toggle-thumb { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #a89bc4; transition: all .25s; }
-.toggle-track.on .toggle-thumb { transform: translateX(18px); background: #fff; }
-.boss-badge { display: inline-block; background: rgba(220,38,38,.2); border: 1px solid rgba(248,113,113,.35); color: #fca5a5; font-size: .68rem; font-weight: 700; padding: 3px 9px; border-radius: 20px; letter-spacing: .06em; }
-.boss-badge.small { font-size: .62rem; padding: 2px 8px; }
-.urgency-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.urgency-row { display: flex; flex-direction: column; gap: 10px; }
 .urgency-pills { display: flex; gap: 8px; flex-wrap: wrap; }
-.urgency-pill { background: rgba(255,255,255,.04); border: 1px solid rgba(196,181,253,.15); border-radius: 20px; padding: 6px 16px; font-family: 'Nunito', sans-serif; font-size: .78rem; font-weight: 700; color: #7c6fa0; cursor: pointer; transition: all .2s; }
-.urgency-pill:hover { border-color: rgba(196,181,253,.4); color: #c4b5fd; }
-.urgency-low.active    { background: rgba(16,185,129,.15); border-color: rgba(16,185,129,.4); color: #34d399; }
-.urgency-medium.active { background: rgba(234,179,8,.12); border-color: rgba(234,179,8,.4); color: #facc15; }
-.urgency-high.active   { background: rgba(220,38,38,.18); border-color: rgba(252,165,165,.4); color: #fca5a5; animation: urgency-pulse 1.5s ease-in-out infinite; }
-@keyframes urgency-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); } 50% { box-shadow: 0 0 12px 2px rgba(220,38,38,.3); } }
+.urgency-pill { background: rgba(255,255,255,.04); border: 1px solid rgba(196,181,253,.12); border-radius: 20px; padding: 8px 18px; font-family: 'Nunito', sans-serif; font-size: .82rem; font-weight: 700; color: #6b5fa0; cursor: pointer; transition: all .2s; }
+.urgency-pill.urgency-low.active   { background: rgba(16,185,129,.2); border-color: rgba(16,185,129,.4); color: #34d399; }
+.urgency-pill.urgency-medium.active { background: rgba(234,179,8,.15); border-color: rgba(234,179,8,.4); color: #facc15; }
+.urgency-pill.urgency-high.active  { background: rgba(220,38,38,.2); border-color: rgba(252,165,165,.4); color: #fca5a5; }
+.boss-toggle { cursor: pointer; }
+.boss-toggle-inner { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: rgba(255,255,255,.03); border: 1px solid rgba(196,181,253,.1); border-radius: 10px; transition: all .2s; }
+.boss-toggle-inner.active { background: rgba(220,38,38,.1); border-color: rgba(252,165,165,.25); }
+.toggle-track { width: 36px; height: 20px; background: rgba(255,255,255,.1); border-radius: 10px; position: relative; flex-shrink: 0; transition: background .2s; }
+.boss-toggle-inner.active .toggle-track { background: rgba(220,38,38,.5); }
+.toggle-thumb { position: absolute; width: 14px; height: 14px; background: #fff; border-radius: 50%; top: 3px; left: 3px; transition: transform .2s; }
+.boss-toggle-inner.active .toggle-thumb { transform: translateX(16px); }
+.toggle-label { font-size: .85rem; font-weight: 600; color: #8b80a8; }
 .api-error { color: #fca5a5; font-size: .82rem; background: rgba(220,38,38,.1); border: 1px solid rgba(252,165,165,.2); border-radius: 8px; padding: 8px 14px; }
-.submit-btn { margin-top: 6px; width: 100%; background: linear-gradient(135deg,#7c3aed,#a855f7,#db2777); border: none; border-radius: 12px; padding: 14px 24px; font-family: 'Cinzel', serif; font-size: 1rem; font-weight: 700; color: #fff; cursor: pointer; transition: all .25s; letter-spacing: .04em; box-shadow: 0 8px 28px rgba(124,58,237,.35); }
-.submit-btn:hover { transform: translateY(-2px); box-shadow: 0 14px 36px rgba(124,58,237,.45); }
+.submit-btn { background: linear-gradient(135deg,#7c3aed,#a855f7); border: none; border-radius: 12px; padding: 14px 28px; font-family: 'Nunito', sans-serif; font-size: .95rem; font-weight: 800; color: #fff; cursor: pointer; transition: all .25s; box-shadow: 0 8px 24px rgba(124,58,237,.35); }
+.submit-btn:hover:not(.loading) { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(124,58,237,.5); }
 .submit-btn.loading { background: linear-gradient(135deg,#4c1d95,#6d28d9); cursor: not-allowed; }
 .btn-content { display: flex; align-items: center; justify-content: center; gap: 10px; }
 .btn-icon { font-size: 1.1rem; }
@@ -595,37 +679,47 @@ async function commitToQuest(quest: QuestDto) {
 .dot-low { background: #34d399; }
 .dot-medium { background: #facc15; }
 .dot-high { background: #f87171; animation: urgency-pulse 1.5s ease-in-out infinite; }
+@keyframes urgency-pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
 .qc-urgency { font-size: .72rem; font-weight: 700; color: #7c6fa0; text-transform: uppercase; letter-spacing: .06em; }
 .qc-ticket { font-size: .7rem; color: #4b4569; font-family: 'Cinzel', serif; }
-.qc-body { margin-bottom: 10px; }
+.qc-time { font-size: .7rem; color: #4b4569; margin-left: auto; }
+.qc-body { margin-bottom: 12px; }
 .qc-player { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-.qc-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg,#7c3aed,#db2777); display: flex; align-items: center; justify-content: center; font-family: 'Cinzel', serif; font-weight: 900; font-size: .9rem; color: #fff; flex-shrink: 0; }
-.qc-name { font-weight: 700; font-size: .95rem; color: #e2d9f3; }
-.qc-loc { font-size: .78rem; color: #6b5fa0; margin-top: 2px; }
-.qc-issue { font-size: .84rem; color: #8b80a8; font-style: italic; border-left: 2px solid rgba(196,181,253,.2); padding-left: 10px; margin-top: 4px; }
-.qc-heroes { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid rgba(196,181,253,.08); margin-top: 8px; }
-.qc-heroes-label { font-size: .72rem; color: #6b5fa0; font-weight: 700; }
-.qc-helpers { font-size: .8rem; color: #6b5fa0; padding-top: 8px; border-top: 1px solid rgba(196,181,253,.08); margin-top: 6px; }
+.qc-avatar { width: 36px; height: 36px; background: linear-gradient(135deg,#7c3aed,#a855f7); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Cinzel', serif; font-size: .9rem; font-weight: 700; color: #fff; flex-shrink: 0; }
+.qc-name { font-family: 'Cinzel', serif; font-size: .95rem; color: #e2d9f3; font-weight: 600; }
+.qc-name-link { text-decoration: none; transition: color .2s; }
+.qc-name-link:hover { color: #c4b5fd; text-decoration: underline; }
+.qc-loc { font-size: .75rem; color: #5c5278; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.qc-issue { font-size: .82rem; color: #8b80a8; font-style: italic; border-left: 2px solid rgba(196,181,253,.15); padding-left: 8px; }
+.qc-heroes { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.qc-heroes-label { font-size: .72rem; color: #7c6fa0; font-weight: 700; }
+.qc-helpers { font-size: .78rem; color: #9ca3af; margin-bottom: 10px; }
+.copy-join-btn { background: rgba(196,181,253,.1); border: 1px solid rgba(196,181,253,.2); border-radius: 6px; padding: 1px 6px; font-size: .72rem; color: #c4b5fd; cursor: pointer; transition: all .15s; line-height: 1.4; }
+.copy-join-btn:hover { background: rgba(196,181,253,.2); }
 .qc-helpers strong { color: #c4b5fd; }
-.qc-footer { display: flex; padding-top: 12px; border-top: 1px solid rgba(196,181,253,.08); margin-top: 8px; }
-.commit-area { display: flex; gap: 8px; width: 100%; align-items: center; }
-.commit-input { flex: 1; padding: 9px 14px; font-size: .84rem; }
-.commit-btn { background: linear-gradient(135deg,#7c3aed,#a855f7); border: none; border-radius: 10px; padding: 9px 18px; font-family: 'Nunito', sans-serif; font-size: .82rem; font-weight: 700; color: #fff; cursor: pointer; transition: all .2s; white-space: nowrap; }
-.commit-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(124,58,237,.35); }
-.committing-msg { display: flex; align-items: center; gap: 8px; font-size: .82rem; color: #7c6fa0; }
-.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.75); backdrop-filter: blur(8px); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; }
-.modal { background: #13111f; border: 1px solid rgba(196,181,253,.2); border-radius: 20px; padding: 32px; max-width: 420px; width: 100%; box-shadow: 0 32px 80px rgba(0,0,0,.6); text-align: center; }
-.modal-icon { font-size: 2.5rem; margin-bottom: 10px; animation: pop .35s ease; }
-@keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
-.modal-title { font-family: 'Cinzel', serif; font-size: 1.4rem; color: #e2d9f3; margin-bottom: 8px; }
+.qc-footer { border-top: 1px solid rgba(196,181,253,.08); padding-top: 12px; }
+.commit-area { display: flex; gap: 8px; }
+.commit-input { flex: 1; padding: 9px 14px; font-size: .85rem; }
+.commit-btn { background: linear-gradient(135deg,rgba(124,58,237,.3),rgba(168,85,247,.2)); border: 1px solid rgba(196,181,253,.3); border-radius: 10px; padding: 9px 16px; font-family: 'Nunito', sans-serif; font-size: .82rem; font-weight: 700; color: #c4b5fd; cursor: pointer; transition: all .2s; white-space: nowrap; }
+.commit-btn:hover { background: linear-gradient(135deg,rgba(124,58,237,.45),rgba(168,85,247,.3)); }
+.committing-msg { display: flex; align-items: center; gap: 8px; font-size: .82rem; color: #7c6fa0; padding: 8px 0; }
+.boss-badge { background: rgba(220,38,38,.15); border: 1px solid rgba(252,165,165,.25); color: #fca5a5; border-radius: 20px; padding: 3px 10px; font-size: .72rem; font-weight: 700; }
+.boss-badge.small { font-size: .62rem; padding: 2px 8px; }
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.75); backdrop-filter: blur(6px); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.modal { background: #13102a; border: 1px solid rgba(196,181,253,.2); border-radius: 20px; padding: 32px; max-width: 420px; width: 100%; text-align: center; box-shadow: 0 40px 100px rgba(0,0,0,.6); }
+.username-modal { text-align: left; }
+.username-modal .modal-actions { justify-content: flex-end; }
+.modal-icon { font-size: 2.5rem; margin-bottom: 12px; }
+.modal-title { font-family: 'Cinzel', serif; font-size: 1.3rem; color: #e2d9f3; margin-bottom: 8px; }
 .modal-desc { color: #8b80a8; font-size: .88rem; line-height: 1.6; margin-bottom: 20px; }
 .helper-input-row { display: flex; gap: 8px; margin-bottom: 12px; }
 .add-helper-btn { background: linear-gradient(135deg,#7c3aed,#a855f7); border: none; border-radius: 10px; width: 42px; flex-shrink: 0; font-size: 1.2rem; color: #fff; cursor: pointer; transition: all .2s; }
 .helper-chips { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-bottom: 16px; min-height: 28px; }
 .modal-actions { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
 .modal-cancel { background: transparent; border: 1px solid rgba(196,181,253,.25); border-radius: 10px; padding: 10px 22px; color: #7c6fa0; font-family: 'Nunito', sans-serif; font-size: .88rem; font-weight: 700; cursor: pointer; transition: all .2s; }
-.modal-confirm { background: linear-gradient(135deg,rgba(16,185,129,.3),rgba(5,150,105,.2)); border: 1px solid rgba(16,185,129,.4); border-radius: 10px; padding: 10px 22px; color: #34d399; font-family: 'Nunito', sans-serif; font-size: .88rem; font-weight: 700; cursor: pointer; transition: all .2s; }
-.modal-confirm:hover { background: linear-gradient(135deg,rgba(16,185,129,.4),rgba(5,150,105,.3)); transform: translateY(-1px); }
+.modal-confirm { background: linear-gradient(135deg,rgba(124,58,237,.4),rgba(168,85,247,.3)); border: 1px solid rgba(196,181,253,.4); border-radius: 10px; padding: 10px 22px; color: #c4b5fd; font-family: 'Nunito', sans-serif; font-size: .88rem; font-weight: 700; cursor: pointer; transition: all .2s; }
+.modal-confirm:hover:not(:disabled) { background: linear-gradient(135deg,rgba(124,58,237,.55),rgba(168,85,247,.4)); transform: translateY(-1px); }
+.modal-confirm:disabled { opacity: .4; cursor: not-allowed; }
 .site-footer { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 36px; font-size: .72rem; color: #3d3556; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; flex-wrap: wrap; }
 .dot { color: #5c5278; }
 .tab-fade-enter-active, .tab-fade-leave-active { transition: opacity .2s, transform .2s; }

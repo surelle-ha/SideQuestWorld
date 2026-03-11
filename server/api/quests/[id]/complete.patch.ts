@@ -1,7 +1,4 @@
-// server/api/quests/[id].complete.patch.ts
-/**
- * PATCH /api/quests/:id/complete
- */
+// server/api/quests/[id]/complete.patch.ts
 import prisma from '~~/server/db/prisma'
 import { serializeQuest } from '~~/server/utils/quest.utils'
 import type { CompleteQuestBody } from '~~/types/quest'
@@ -31,7 +28,7 @@ export default defineEventHandler(async (event) => {
     : []
 
   const updated = await prisma.sosQuest.update({
-    where:   { id: quest.id },
+    where: { id: quest.id },
     data: {
       status:  'resolved',
       helpers: helpers.length ? helpers.join(',') : null,
