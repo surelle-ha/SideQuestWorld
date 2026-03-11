@@ -1,8 +1,5 @@
 // server/api/heroes/[questId].post.ts
-/**
- * POST /api/heroes/:questId
- */
-import {getPrisma} from '~~/server/db/prisma'
+import prisma from '~~/server/db/prisma'
 import { requireField, serializeQuest } from '~~/server/utils/quest.utils'
 import type { CommitHeroBody } from '~~/types/quest'
 import type { QuestHero } from '~~/server/entities/QuestHero'
@@ -17,7 +14,7 @@ export default defineEventHandler(async (event) => {
 
   const username = requireField(body?.username, 'username')
 
-  const quest = await getPrisma.sosQuest.findFirst({
+  const quest = await prisma.sosQuest.findFirst({
     where:   questId.startsWith('SQW-') ? { ticketId: questId } : { id: questId },
     include: { heroes: true },
   })
