@@ -36,3 +36,61 @@ model QuestHero {
 
   @@map("quest_heroes")
 }
+
+model User {
+  id             String        @id @default(uuid())
+  sqwUsername    String        @unique @map("sqw_username")
+  email          String        @unique
+  ingameUsername String        @map("ingame_username")
+  passwordHash   String        @map("password_hash")
+  heroPoints     Int           @default(0) @map("hero_points")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  sessions       Session[]
+  guildsLed      Guild[]       @relation("GuildLeader")
+  guildMemberships GuildMember[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("sessions")
+}
+
+model Guild {
+  id          String        @id @default(uuid())
+  name        String
+  tag         String        @unique
+  description String?
+  leaderId    String        @map("leader_id")
+  leader      User          @relation("GuildLeader", fields: [leaderId], references: [id], onDelete: Cascade)
+  minLevel    Int           @default(1) @map("min_level")
+  playstyle   String        @default("casual")
+  server      String        @default("Any")
+  memberCount Int           @default(1) @map("member_count")
+  isRecruiting Boolean     @default(true) @map("is_recruiting")
+  members     GuildMember[]
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  @@map("guilds")
+}
+
+model GuildMember {
+  id       String   @id @default(uuid())
+  guildId  String   @map("guild_id")
+  guild    Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  userId   String   @map("user_id")
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     String   @default("member")
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  @@map("guild_members")
+}
