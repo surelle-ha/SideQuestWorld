@@ -7,8 +7,7 @@
     </div>
 
     <div class="security-notice">
-      🔒 <strong>Security reminder:</strong> Do NOT use your in-game password or username
-      for your Side Quest account.
+      🔒 <strong>Security reminder:</strong> Do NOT use your in-game password for your Side Quest account.
     </div>
 
     <form class="auth-form" @submit.prevent="handleLogin">

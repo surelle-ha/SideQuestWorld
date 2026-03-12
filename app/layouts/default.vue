@@ -48,6 +48,7 @@
             <NuxtLink to="/" class="tab-btn" :class="{ active: route.path === '/' }">🆘 SOS</NuxtLink>
             <NuxtLink to="/leaderboard" class="tab-btn">🏆 Leaderboard</NuxtLink>
             <NuxtLink to="/guild-finder" class="tab-btn">⚔️ Guilds</NuxtLink>
+            <NuxtLink to="/enhancements" class="tab-btn">📜 Enhancements</NuxtLink>
             <NuxtLink to="/equipment-builder" class="tab-btn">🛡️ Equipment</NuxtLink>
           </nav>
         </div>

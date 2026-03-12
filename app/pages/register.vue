@@ -16,7 +16,7 @@
         </div>
 
         <div class="security-notice">
-          🔒 <strong>Important:</strong> Do NOT use your in-game password or in-game username for your Side Quest account. Keep them separate for your security.
+          🔒 <strong>Important:</strong> Do NOT use your in-game password for your Side Quest account. Keep them separate for your security.
         </div>
 
         <form class="auth-form" @submit.prevent="handleRegister">
